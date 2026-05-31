@@ -1,0 +1,49 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure CMake (MSVC x64)
+        run: cmake -B build -A x64
+
+      - name: Build Release
+        run: cmake --build build --config Release
+
+      - name: Show binary info
+        run: |
+          dir build\Release\AugrixUpdater.exe
+          dumpbin /headers build\Release\AugrixUpdater.exe | findstr "machine number"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AugrixUpdater-x64
+          path: build/Release/AugrixUpdater.exe
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: AugrixUpdater-x64
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: AugrixUpdater.exe
+          generate_release_notes: true
